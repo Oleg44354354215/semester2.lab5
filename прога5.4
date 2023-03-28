@@ -1,0 +1,272 @@
+﻿using System;
+using System.Threading;
+
+class MatrixMultiplicationProgram
+{
+    static int[,] result;
+    static Semaphore semaphore;
+    static object lockObject = new object();
+
+    static void Main(string[] args)
+    {
+        Console.WriteLine("Enter the number of rows and columns for the first matrix:");
+        int m1 = int.Parse(Console.ReadLine());
+        int n1 = int.Parse(Console.ReadLine());
+
+        Console.WriteLine("Enter the number of rows and columns for the second matrix:");
+        int m2 = int.Parse(Console.ReadLine());
+        int n2 = int.Parse(Console.ReadLine());
+
+        if (n1 != m2)
+        {
+            Console.WriteLine("The number of columns of the first matrix must equal the number of rows of the second matrix.");
+            return;
+        }
+
+        int[,] matrix1 = new int[m1, n1];
+        int[,] matrix2 = new int[m2, n2];
+        result = new int[m1, n2];
+        semaphore = new Semaphore(Environment.ProcessorCount, Environment.ProcessorCount);
+
+        Console.WriteLine("Enter the elements of the first matrix:");
+        ReadMatrix(matrix1);
+
+        Console.WriteLine("Enter the elements of the second matrix:");
+        ReadMatrix(matrix2);
+
+        Console.WriteLine("The result of the multiplication is:");
+
+        Thread[] threads = new Thread[m1];
+
+        for (int i = 0; i < m1; i++)
+        {
+            threads[i] = new Thread(new ParameterizedThreadStart(MultiplyRow));
+            threads[i].Start(i);
+        }
+
+        for (int i = 0; i < m1; i++)
+        {
+            threads[i].Join();
+        }
+
+        PrintMatrix(result);
+    }
+
+    static void ReadMatrix(int[,] matrix)
+    {
+        for (int i = 0; i < matrix.GetLength(0); i++)
+        {
+            for (int j = 0; j < matrix.GetLength(1); j++)
+            {
+                matrix[i, j] = int.Parse(Console.ReadLine());
+            }
+        }
+    }
+
+    static void MultiplyRow(object rowIndex)
+    {
+        int i = (int)rowIndex;
+
+        semaphore.WaitOne();
+
+        for (int j = 0; j < result.GetLength(1); j++)
+        {
+            int sum = 0;
+
+            for (int k = 0; k < result.GetLength(0); k++)
+            {
+                sum += matrix1[i, k] * matrix2[k, j];
+            }
+
+            lock (lockObject)
+            {
+                result[i, j] = sum;
+            }
+        }
+
+        semaphore.Release();
+    }
+
+    static void PrintMatrix(int[,] matrix)
+    {
+        for (int i = 0; i < matrix.GetLength(0); i++)
+        {
+            for (int j = 0; j < matrix.GetLength(1); j++)
+            {
+                Console.Write(matrix[i, j] + " ");
+            }
+
+            Console.WriteLine();
+        }
+    }
+}
+// Define the method to be called by each thread
+private static void MultiplyMatrixSection(object state)
+{
+    // Unpack the state object to get the parameters for this section
+    var sectionParams = (MatrixSectionParams)state;
+    var result = sectionParams.Result;
+    var semaphore = sectionParams.Semaphore;
+    var monitor = sectionParams.Monitor;
+
+    // Perform the multiplication for this section of the result matrix
+    for (int i = sectionParams.RowStart; i < sectionParams.RowEnd; i++)
+    {
+        for (int j = 0; j < result.Columns; j++)
+        {
+            int sum = 0;
+            for (int k = 0; k < sectionParams.Matrix1.Columns; k++)
+            {
+                sum += sectionParams.Matrix1[i, k] * sectionParams.Matrix2[k, j];
+            }
+
+            // Acquire the semaphore to ensure exclusive access to this section of the result matrix
+            semaphore.WaitOne();
+
+            // Update the value in the result matrix and release the semaphore
+            monitor.Enter(result);
+            result[i, j] = sum;
+            monitor.Exit(result);
+
+            semaphore.Release();
+        }
+    }
+}
+static void Main(string[] args)
+{
+    // Define the size of the matrices and the number of threads to use
+    int rows1 = 1000;
+    int columns1 = 1000;
+    int rows2 = 1000;
+    int columns2 = 1000;
+    int numThreads = 4;
+
+    // Create the matrices to be multiplied and the result matrix
+    var matrix1 = new Matrix(rows1, columns1);
+    var matrix2 = new Matrix(rows2, columns2);
+    var result = new Matrix(rows1, columns2);
+
+    // Populate the input matrices with random values
+    var rand = new Random();
+    for (int i = 0; i < rows1; i++)
+    {
+        for (int j = 0; j < columns1; j++)
+        {
+            matrix1[i, j] = rand.Next(10);
+        }
+    }
+    for (int i = 0; i < rows2; i++)
+    {
+        for (int j = 0; j < columns2; j++)
+        {
+            matrix2[i, j] = rand.Next(10);
+        }
+    }
+
+    // Create the semaphore and monitor objects
+    var semaphore = new Semaphore(numThreads, numThreads);
+    var monitor = new object();
+
+    // Calculate the number of rows each thread will be responsible for
+    int rowsPerThread = rows1 / numThreads;
+
+    // Create an array of threads to perform the matrix multiplication
+    var threads = new Thread[numThreads];
+    for (int i = 0; i < numThreads; i++)
+    {
+        int rowStart = i * rowsPerThread;
+        int rowEnd = (i == numThreads - 1) ? rows1 : (i + 1) *
+            private static void MultiplyMatrices(int[,] matrixA, int[,] matrixB, int[,] resultMatrix, int startRow, int endRow, SemaphoreSlim semaphore)
+        {
+            int matrixAColumnCount = matrixA.GetLength(1);
+            int matrixBColumnCount = matrixB.GetLength(1);
+
+            for (int i = startRow; i < endRow; i++)
+            {
+                for (int j = 0; j < matrixBColumnCount; j++)
+                {
+                    int sum = 0;
+                    for (int k = 0; k < matrixAColumnCount; k++)
+                    {
+                        sum += matrixA[i, k] * matrixB[k, j];
+                    }
+                    semaphore.Wait();
+                    resultMatrix[i, j] = sum;
+                    semaphore.Release();
+                }
+            }
+        }
+        // розділити рядки результуючої матриці між потоками
+        int rowCountPerThread = resultMatrixRowCount / threadCount;
+        int startRow = 0;
+        int endRow = 0;
+
+        SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
+
+        Task[] tasks = new Task[threadCount];
+
+        for (int i = 0; i < threadCount; i++)
+        {
+            startRow = i * rowCountPerThread;
+            endRow = startRow + rowCountPerThread;
+            if (i == threadCount - 1) // для останнього потока додатково обробляємо остачу рядків
+            {
+                endRow = resultMatrixRowCount;
+            }
+
+            tasks[i] = Task.Run(() => MultiplyMatrices(matrixA, matrixB, resultMatrix, startRow, endRow, semaphore));
+        }
+
+        Task.WaitAll(tasks);
+
+        sw.Stop
+public static int[,] MatrixGenerator(int size, int maxVal)
+        {
+            var rand = new Random();
+            var matrix1 = new int[size, size];
+            var matrix2 = new int[size, size];
+
+            for (int i = 0; i < size; i++)
+            {
+                for (int j = 0; j < size; j++)
+                {
+                    matrix1[i, j] = rand.Next(maxVal);
+                    matrix2[i, j] = rand.Next(maxVal);
+                }
+            }
+
+            return (matrix1, matrix2);
+        }
+
+        public static void PrintMatrix(int[,] matrix)
+        {
+            int numRows = matrix.GetLength(0);
+            int numCols = matrix.GetLength(1);
+
+            for (int i = 0; i < numRows; i++)
+            {
+                for (int j = 0; j < numCols; j++)
+                {
+                    Console.Write(matrix[i, j] + " ");
+                }
+                Console.WriteLine();
+            }
+        }
+        static void Main(string[] args)
+        {
+            int matrixSize = 3;
+            int maxVal = 10;
+            var matrices = MatrixGenerator(matrixSize, maxVal);
+            var matrix1 = matrices.Item1;
+            var matrix2 = matrices.Item2;
+
+            Console.WriteLine("Matrix A:");
+            PrintMatrix(matrix1);
+
+            Console.WriteLine("Matrix B:");
+            PrintMatrix(matrix2);
+
+            var result = ParallelMatrixMultiply(matrix1, matrix2, Environment.ProcessorCount);
+            Console.WriteLine("Result:");
+            PrintMatrix(result);
+        }

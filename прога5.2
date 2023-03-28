@@ -1,0 +1,103 @@
+﻿using System;
+using System.Threading;
+
+class Program
+{
+    static Semaphore semaphore = new Semaphore(2, 2); // Ліміт 2 автомобілі на перехресті
+    static object lockObj = new object();
+
+    static void Main(string[] args)
+    {
+        Thread[] trafficLights = new Thread[4];
+        for (int i = 0; i < trafficLights.Length; i++)
+        {
+            int lightId = i + 1;
+            trafficLights[i] = new Thread(() => TrafficLight(lightId));
+            trafficLights[i].Start();
+        }
+
+        while (true)
+        {
+            // Створення та запуск потоку для кожного автомобіля
+            Thread carThread = new Thread(() => Car());
+            carThread.Start();
+
+            // Затримка між створенням нових автомобілів
+            Thread.Sleep(1000);
+        }
+    }
+
+    static void TrafficLight(int lightId)
+    {
+        while (true)
+        {
+            lock (lockObj)
+            {
+                Console.WriteLine("Світлофор " + lightId + " включений. Автомобілі можуть рухатися.");
+            }
+
+            Thread.Sleep(5000); // Світлофор включений на 5 секунд
+
+            lock (lockObj)
+            {
+                Console.WriteLine("Світлофор " + lightId + " вимкнений. Автомобілі не можуть рухатися.");
+            }
+
+            Thread.Sleep(1000); // Світлофор вимкнений на 1 секунду
+        }
+    }
+
+    static void Car()
+    {
+        Console.WriteLine("Автомобіль під’їхав до перехрестя.");
+
+        semaphore.WaitOne(); // Очікування на доступ до перехрестя
+        lock (lockObj)
+        {
+            Console.WriteLine("Автомобіль проїхав через перехрестя.");
+        }
+        semaphore.Release(); // Звільнення ресурсу перехрестя
+    }
+}
+public class Car
+{
+    public int Id { get; set; }
+
+    public Car(int id)
+    {
+        Id = id;
+    }
+
+    public void DriveThroughIntersection()
+    {
+        Console.WriteLine($"Car {Id} is driving through the intersection");
+        Thread.Sleep(TimeSpan.FromSeconds(1));
+    }
+}
+static void Main(string[] args)
+{
+    Intersection intersection = new Intersection();
+    Semaphore semaphore = new Semaphore(2, 2);
+
+    Thread trafficLight1Thread = new Thread(() => intersection.TrafficLight1(semaphore));
+    Thread trafficLight2Thread = new Thread(() => intersection.TrafficLight2(semaphore));
+    Thread trafficLight3Thread = new Thread(() => intersection.TrafficLight3(semaphore));
+    Thread trafficLight4Thread = new Thread(() => intersection.TrafficLight4(semaphore));
+
+    trafficLight1Thread.Start();
+    trafficLight2Thread.Start();
+    trafficLight3Thread.Start();
+    trafficLight4Thread.Start();
+
+    List<Car> cars = new List<Car>();
+    for (int i = 1; i <= 10; i++)
+    {
+        Car car = new Car(i);
+        cars.Add(car);
+        Thread carThread = new Thread(() => intersection.DriveThroughIntersection(car));
+        carThread.Start();
+        Thread.Sleep(TimeSpan.FromSeconds(1));
+    }
+
+    Console.ReadLine();
+}

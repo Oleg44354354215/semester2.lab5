@@ -1,0 +1,96 @@
+﻿using System;
+using System.Threading;
+
+namespace QuickSortMultiThreaded
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            int[] arr = { 10, 7, 8, 9, 1, 5 };
+            Console.WriteLine("Unsorted array:");
+            PrintArray(arr);
+
+            QuickSort(arr, 0, arr.Length - 1);
+
+            Console.WriteLine("Sorted array:");
+            PrintArray(arr);
+        }
+
+        static void QuickSort(int[] arr, int left, int right)
+        {
+            if (left < right)
+            {
+                int pivot = Partition(arr, left, right);
+
+                Thread leftThread = new Thread(() => QuickSort(arr, left, pivot - 1));
+                Thread rightThread = new Thread(() => QuickSort(arr, pivot + 1, right));
+
+                leftThread.Start();
+                rightThread.Start();
+
+                leftThread.Join();
+                rightThread.Join();
+            }
+        }
+
+        static int Partition(int[] arr, int left, int right)
+        {
+            int pivot = arr[right];
+            int i = left - 1;
+
+            for (int j = left; j < right; j++)
+            {
+                if (arr[j] < pivot)
+                {
+                    i++;
+                    Swap(arr, i, j);
+                }
+            }
+
+            Swap(arr, i + 1, right);
+            return i + 1;
+        }
+
+        static void Swap(int[] arr, int i, int j)
+        {
+            int temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
+        }
+
+        static void PrintArray(int[] arr)
+        {
+            foreach (int num in arr)
+            {
+                Console.Write(num + " ");
+            }
+            Console.WriteLine();
+        }
+    }
+}
+private void SortParallel(int[] array, int left, int right)
+{
+    if (left >= right) return;
+
+    int pivotIndex = partition(array, left, right);
+    Thread leftThread = null, rightThread = null;
+
+    if (left < pivotIndex - 1)
+    {
+        leftThread = new Thread(() => SortParallel(array, left, pivotIndex - 1));
+        leftThread.Start();
+    }
+    if (pivotIndex < right)
+    {
+        rightThread = new Thread(() => SortParallel(array, pivotIndex, right));
+        rightThread.Start();
+    }
+
+    if (leftThread != null) leftThread.Join();
+    if (rightThread != null) rightThread.Join();
+}
+public void Sort(int[] array)
+{
+    SortParallel(array, 0, array.Length - 1);
+}

@@ -1,0 +1,53 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Threading;
+
+class Program
+{
+    static Queue<int> queue = new Queue<int>();
+    static object lockObject = new object();
+
+    static void Main(string[] args)
+    {
+        Thread producerThread = new Thread(ProducerMethod);
+        Thread consumerThread = new Thread(ConsumerMethod);
+
+        producerThread.Start();
+        consumerThread.Start();
+
+        producerThread.Join();
+        consumerThread.Join();
+    }
+
+    static void ProducerMethod()
+    {
+        Random random = new Random();
+
+        while (true)
+        {
+            int number = random.Next(100);
+            lock (lockObject)
+            {
+                queue.Enqueue(number);
+                Console.WriteLine($"Producer added number {number} to queue.");
+            }
+            Thread.Sleep(500);
+        }
+    }
+
+    static void ConsumerMethod()
+    {
+        while (true)
+        {
+            lock (lockObject)
+            {
+                if (queue.Count > 0)
+                {
+                    int number = queue.Dequeue();
+                    Console.WriteLine($"Consumer removed number {number} from queue.");
+                }
+            }
+            Thread.Sleep(1000);
+        }
+    }
+}
